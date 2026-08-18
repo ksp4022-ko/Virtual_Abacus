@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="theme-color" content="#f4f1ea" />
+  <title>Professional Virtual Abacus｜單桿真實撥珠原型 v0.1</title>
+  <style>
+    :root{
+      --bg:#f4f1ea;
+      --panel:#fffdf8;
+      --ink:#3f2d20;
+      --muted:#7d6a5b;
+      --accent:#6d4c31;
+      --success:#2e7d32;
+      --warn:#b26a00;
+      --danger:#b42318;
+      --line:#d8c9bb;
+      --safe-top:env(safe-area-inset-top);
+      --safe-bottom:env(safe-area-inset-bottom);
+      --safe-left:env(safe-area-inset-left);
+      --safe-right:env(safe-area-inset-right);
+    }
+
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+    html,body{margin:0;width:100%;min-height:100%;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","Microsoft JhengHei",sans-serif}
+    body{min-height:100dvh;overflow-x:hidden}
+    button,input,select{font:inherit}
+
+    .app{
+      width:100%;
+      min-height:100dvh;
+      padding:
+        calc(var(--safe-top) + 10px)
+        calc(var(--safe-right) + 10px)
+        calc(var(--safe-bottom) + 88px)
+        calc(var(--safe-left) + 10px);
+    }
+
+    .top{
+      width:min(96vw,520px);
+      margin:0 auto 10px;
+      background:rgba(255,255,255,.86);
+      border:1px solid rgba(109,76,49,.12);
+      border-radius:18px;
+      box-shadow:0 6px 22px rgba(58,42,29,.08);
+      padding:8px 14px 10px;
+      text-align:center;
+      position:relative;
+      backdrop-filter:blur(10px);
+    }
+
+    .version{
+      position:absolute;
+      top:6px;
+      right:10px;
+      font-size:11px;
+      font-weight:800;
+      color:#968578;
+    }
+
+    .value{
+      font-size:clamp(42px,13vw,64px);
+      line-height:1;
+      font-weight:900;
+      font-variant-numeric:tabular-nums;
+      letter-spacing:.02em;
+    }
+
+    .sub{
+      margin-top:5px;
+      font-size:13px;
+      font-weight:750;
+      color:var(--muted);
+    }
+
+    .stage{
+      width:min(96vw,520px);
+      margin:0 auto;
+      position:relative;
+    }
+
+    #abacus{
+      display:block;
+      width:100%;
+      height:auto;
+      aspect-ratio:5/4;
+      border-radius:18px;
+      filter:drop-shadow(0 10px 20px rgba(0,0,0,.18));
+      touch-action:none;
+      user-select:none;
+      -webkit-user-select:none;
+      overscroll-behavior:contain;
+    }
+
+    .status-card{
+      width:min(96vw,520px);
+      margin:10px auto 0;
+      background:rgba(255,255,255,.78);
+      border:1px solid rgba(109,76,49,.12);
+      border-radius:14px;
+      padding:9px 12px;
+      font-size:12px;
+      line-height:1.55;
+      color:var(--muted);
+    }
+    .status-card strong{color:var(--ink)}
+    #hintLine{color:var(--warn);font-weight:850;min-height:18px}
+
+    .fab{
+      position:fixed;
+      right:calc(var(--safe-right) + 16px);
+      bottom:calc(var(--safe-bottom) + 18px);
+      width:58px;
+      height:58px;
+      border:0;
+      border-radius:50%;
+      background:#4a3525;
+      color:white;
+      font-size:26px;
+      box-shadow:0 8px 22px rgba(0,0,0,.28);
+      z-index:40;
+    }
+
+    .sheet-backdrop{
+      position:fixed;
+      inset:0;
+      background:rgba(31,24,18,.38);
+      display:none;
+      z-index:50;
+    }
+    .sheet-backdrop.open{display:block}
+
+    .sheet{
+      position:fixed;
+      left:0;
+      right:0;
+      bottom:0;
+      z-index:60;
+      max-height:min(86dvh,780px);
+      overflow:auto;
+      background:var(--panel);
+      border-radius:24px 24px 0 0;
+      box-shadow:0 -16px 44px rgba(0,0,0,.22);
+      padding:16px 16px calc(var(--safe-bottom) + 22px);
+      transform:translateY(102%);
+      transition:transform .22s ease;
+      -webkit-overflow-scrolling:touch;
+    }
+    .sheet.open{transform:translateY(0)}
+
+    .sheet-head{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      position:sticky;
+      top:-16px;
+      background:var(--panel);
+      padding:14px 0 10px;
+      z-index:2;
+    }
+    .sheet-title{font-size:22px;font-weight:900}
+    .close{
+      width:44px;height:44px;border:0;border-radius:50%;
+      background:#eee4da;color:var(--ink);font-size:20px;font-weight:900
+    }
+
+    .preset-row{
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:8px;
+      margin-bottom:14px;
+    }
+    .preset{
+      min-height:46px;
+      border:1px solid #d6c6b8;
+      border-radius:12px;
+      background:white;
+      color:var(--ink);
+      font-weight:850;
+    }
+    .preset.active{background:#4a3525;color:white;border-color:#4a3525}
+
+    .group{
+      border-top:1px solid #eadfd5;
+      padding:13px 0;
+    }
+    .group-title{
+      margin:0 0 9px;
+      font-size:15px;
+      font-weight:900;
+    }
+    .control{margin:11px 0}
+    .control-row{
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      align-items:center;
+      margin-bottom:5px;
+      font-size:14px;
+      font-weight:750;
+    }
+    .control-row output{font-variant-numeric:tabular-nums;color:#5e4635;font-weight:900}
+    input[type=range]{width:100%;accent-color:#5e4635}
+    select{
+      width:100%;
+      min-height:44px;
+      border:1px solid #d6c6b8;
+      border-radius:10px;
+      background:white;
+      padding:8px 10px;
+    }
+
+    .switch-row{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      min-height:46px;
+      font-size:14px;
+      font-weight:800;
+    }
+
+    .switch{
+      position:relative;width:52px;height:30px;flex:0 0 auto
+    }
+    .switch input{opacity:0;width:0;height:0}
+    .slider-switch{
+      position:absolute;inset:0;border-radius:999px;background:#c9beb4;transition:.18s
+    }
+    .slider-switch::before{
+      content:"";position:absolute;width:24px;height:24px;left:3px;top:3px;border-radius:50%;background:white;box-shadow:0 2px 6px rgba(0,0,0,.18);transition:.18s
+    }
+    .switch input:checked + .slider-switch{background:#5e4635}
+    .switch input:checked + .slider-switch::before{transform:translateX(22px)}
+
+    .action-row{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:8px;
+      margin-top:12px;
+    }
+    .action{
+      min-height:48px;border:0;border-radius:12px;font-weight:900
+    }
+    .action.primary{background:#4a3525;color:white}
+    .action.secondary{background:#eee4da;color:#4a3525}
+
+    .tiny-note{
+      margin:8px 0 0;
+      color:#8b7767;
+      font-size:12px;
+      line-height:1.5;
+    }
+
+    .ready-ring{
+      opacity:0;
+      transition:opacity .08s linear;
+      pointer-events:none;
+    }
+    .ready-ring.on{opacity:1}
+
+    @media (prefers-reduced-motion:reduce){
+      .sheet{transition:none}
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="top">
+      <div class="version">單桿 v0.1</div>
+      <div class="value" id="valueDisplay">0</div>
+      <div class="sub">真實撥珠測試｜撥到位、放手後才計值</div>
+    </section>
+
+    <section class="stage">
+      <svg id="abacus" viewBox="0 0 500 400" aria-label="單桿電子算盤測試">
+        <defs>
+          <linearGradient id="frameGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#63432b"/>
+            <stop offset="100%" stop-color="#3f291b"/>
+          </linearGradient>
+          <linearGradient id="beadGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#f3a63b"/>
+            <stop offset="48%" stop-color="#ce7b0b"/>
+            <stop offset="100%" stop-color="#8e4300"/>
+          </linearGradient>
+          <filter id="beadShadow" x="-30%" y="-30%" width="160%" height="160%">
+            <feDropShadow dx="0" dy="2" stdDeviation="2" flood-opacity=".28"/>
+          </filter>
+        </defs>
+
+        <rect x="5" y="5" width="490" height="390" rx="18" fill="url(#frameGrad)" stroke="#2b1a10" stroke-width="10"/>
+        <rect x="8" y="100" width="484" height="50" fill="#352116"/>
+        <line x1="8" y1="100" x2="492" y2="100" stroke="#1d110b" stroke-width="3"/>
+        <line x1="8" y1="150" x2="492" y2="150" stroke="#1d110b" stroke-width="3"/>
+
+        <line id="rodLine" x1="250" y1="10" x2="250" y2="390" stroke="#d7d7d7" stroke-width="5" stroke-linecap="round"/>
+
+        <circle id="readyRingUpper" class="ready-ring" cx="250" cy="80" r="30" fill="none" stroke="#55c46b" stroke-width="5"/>
+        <g id="lowerReadyRings"></g>
+
+        <g id="beads">
+          <rect id="upperBead" class="bead" x="228" y="10" width="44" height="40" rx="9" fill="url(#beadGrad)" filter="url(#beadShadow)"/>
+          <rect id="lower0" class="bead lower" x="228" y="224" width="44" height="40" rx="9" fill="url(#beadGrad)" filter="url(#beadShadow)"/>
+          <rect id="lower1" class="bead lower" x="228" y="266" width="44" height="40" rx="9" fill="url(#beadGrad)" filter="url(#beadShadow)"/>
+          <rect id="lower2" class="bead lower" x="228" y="308" width="44" height="40" rx="9" fill="url(#beadGrad)" filter="url(#beadShadow)"/>
+          <rect id="lower3" class="bead lower" x="228" y="350" width="44" height="40" rx="9" fill="url(#beadGrad)" filter="url(#beadShadow)"/>
+        </g>
+
+        <circle cx="250" cy="125" r="6" fill="#fff" opacity=".95"/>
+      </svg>
+    </section>
+
+    <section class="status-card">
+      <div><strong>狀態：</strong><span id="stateLine">IDLE</span></div>
+      <div><strong>珠位：</strong><span id="beadStateLine">upper=false / lower=0</span></div>
+      <div><strong>手勢：</strong><span id="gestureLine">—</span></div>
+      <div id="hintLine"></div>
+    </section>
+  </main>
+
+  <button class="fab" id="openSettings" aria-label="開啟手感設定">⚙︎</button>
+  <div class="sheet-backdrop" id="backdrop"></div>
+
+  <aside class="sheet" id="settingsSheet" aria-label="工程手感調校">
+    <div class="sheet-head">
+      <div class="sheet-title">工程手感調校</div>
+      <button class="close" id="closeSettings" aria-label="關閉">×</button>
+    </div>
+
+    <div class="preset-row">
+      <button class="preset" data-preset="beginner">初學</button>
+      <button class="preset active" data-preset="standard">標準</button>
+      <button class="preset" data-preset="strict">嚴格</button>
+    </div>
+
+    <section class="group">
+      <h3 class="group-title">觸控與到位</h3>
+
+      <div class="control">
+        <div class="control-row"><span>撥動啟動門檻</span><output id="activationOut">14</output></div>
+        <input id="activation" type="range" min="8" max="24" step="1" value="14"/>
+      </div>
+
+      <div class="control">
+        <div class="control-row"><span>到位容許區</span><output id="arrivalOut">6</output></div>
+        <input id="arrival" type="range" min="4" max="10" step="1" value="6"/>
+      </div>
+
+      <div class="control">
+        <div class="control-row"><span>磁吸距離</span><output id="magnetOut">4</output></div>
+        <input id="magnet" type="range" min="2" max="8" step="1" value="4"/>
+      </div>
+
+      <div class="control">
+        <div class="control-row"><span>珠子跟手程度</span><output id="followOut">100%</output></div>
+        <input id="follow" type="range" min="70" max="100" step="1" value="100"/>
+      </div>
+    </section>
+
+    <section class="group">
+      <h3 class="group-title">動畫與雙指</h3>
+
+      <div class="control">
+        <div class="control-row"><span>磁吸速度</span><output id="snapOut">80ms</output></div>
+        <input id="snap" type="range" min="50" max="160" step="5" value="80"/>
+      </div>
+
+      <div class="control">
+        <div class="control-row"><span>回彈速度</span><output id="reboundOut">140ms</output></div>
+        <input id="rebound" type="range" min="80" max="250" step="5" value="140"/>
+      </div>
+
+      <div class="control">
+        <div class="control-row"><span>雙指寬容時間</span><output id="dualOut">250ms</output></div>
+        <input id="dual" type="range" min="120" max="350" step="10" value="250"/>
+      </div>
+
+      <div class="control">
+        <div class="control-row"><span>珠間距</span><output id="gapOut">2</output></div>
+        <input id="gap" type="range" min="0" max="6" step="1" value="2"/>
+      </div>
+    </section>
+
+    <section class="group">
+      <h3 class="group-title">回饋</h3>
+
+      <div class="control">
+        <div class="control-row"><span>撞擊音量</span><output id="volumeOut">60%</output></div>
+        <input id="volume" type="range" min="0" max="100" step="5" value="60"/>
+      </div>
+
+      <div class="control">
+        <div class="control-row"><span>震動回饋</span></div>
+        <select id="vibration">
+          <option value="off">關閉</option>
+          <option value="weak" selected>弱</option>
+          <option value="medium">中</option>
+        </select>
+      </div>
+
+      <div class="switch-row">
+        <span>標準指法提示</span>
+        <label class="switch">
+          <input id="fingerHint" type="checkbox" checked/>
+          <span class="slider-switch"></span>
+        </label>
+      </div>
+
+      <p class="tiny-note">iPhone Safari 可能不支援網頁震動；不影響撥珠功能。音效會在第一次觸控後啟用。</p>
+    </section>
+
+    <div class="action-row">
+      <button class="action secondary" id="resetZero">算盤歸零</button>
+      <button class="action primary" id="restoreStandard">恢復標準值</button>
+    </div>
+  </aside>
+
+  <script>
+  (() => {
+    "use strict";
+
+    const SVG_NS = "http://www.w3.org/2000/svg";
+    const svg = document.getElementById("abacus");
+    const upperEl = document.getElementById("upperBead");
+    const lowerEls = [0,1,2,3].map(i => document.getElementById("lower" + i));
+    const valueDisplay = document.getElementById("valueDisplay");
+    const stateLine = document.getElementById("stateLine");
+    const beadStateLine = document.getElementById("beadStateLine");
+    const gestureLine = document.getElementById("gestureLine");
+    const hintLine = document.getElementById("hintLine");
+    const readyRingUpper = document.getElementById("readyRingUpper");
+    const lowerReadyRings = document.getElementById("lowerReadyRings");
+
+    const state = {
+      upper: false,
+      lower: 0
+    };
+
+    const visual = {
+      upperY: 10,
+      lowerY: [224,266,308,350]
+    };
+
+    const settings = {
+      activation: 14,
+      arrival: 6,
+      magnet: 4,
+      follow: 1.00,
+      snapMs: 80,
+      reboundMs: 140,
+      dualMs: 250,
+      gap: 2,
+      volume: 0.60,
+      vibration: "weak",
+      fingerHint: true
+    };
+
+    const presets = {
+      beginner: {activation:12, arrival:8, magnet:6, follow:1.00, snapMs:95, reboundMs:160, dualMs:300, gap:2},
+      standard: {activation:14, arrival:6, magnet:4, follow:1.00, snapMs:80, reboundMs:140, dualMs:250, gap:2},
+      strict:   {activation:16, arrival:4, magnet:2, follow:1.00, snapMs:65, reboundMs:110, dualMs:180, gap:2}
+    };
+
+    const activePointers = new Map();
+    let rodAnimating = false;
+    let animationToken = 0;
+    let audioCtx = null;
+    let lastDualLabel = "";
+
+    function pitch(){ return 40 + settings.gap; }
+    function lowerTravel(){ return 200 - 3 * pitch(); }
+    function engagedY(i){ return 150 + i * pitch(); }
+    function parkedY(i){ return 350 - (3 - i) * pitch(); }
+    function committedLowerY(i){ return i < state.lower ? engagedY(i) : parkedY(i); }
+    function committedUpperY(){ return state.upper ? 60 : 10; }
+
+    function resetVisualToCommitted(){
+      visual.upperY = committedUpperY();
+      for(let i=0;i<4;i++) visual.lowerY[i] = committedLowerY(i);
+      render();
+    }
+
+    function render(){
+      upperEl.setAttribute("y", visual.upperY.toFixed(2));
+      lowerEls.forEach((el,i) => el.setAttribute("y", visual.lowerY[i].toFixed(2)));
+      valueDisplay.textContent = String((state.upper ? 5 : 0) + state.lower);
+      beadStateLine.textContent = `upper=${state.upper} / lower=${state.lower}`;
+      updateReadyRings();
+    }
+
+    function updateReadyRings(){
+      readyRingUpper.setAttribute("cy", (visual.upperY + 20).toFixed(2));
+      const upperReady = [...activePointers.values()].some(p => p.kind === "upper" && p.phase === "dragging" && p.ready);
+      readyRingUpper.classList.toggle("on", upperReady);
+
+      lowerReadyRings.innerHTML = "";
+      const readyIndices = new Set();
+      activePointers.forEach(p => {
+        if(p.kind === "lower" && p.phase === "dragging" && p.ready && p.movingIndices){
+          p.movingIndices.forEach(i => readyIndices.add(i));
+        }
+      });
+      readyIndices.forEach(i => {
+        const c = document.createElementNS(SVG_NS, "circle");
+        c.setAttribute("cx","250");
+        c.setAttribute("cy", (visual.lowerY[i] + 20).toFixed(2));
+        c.setAttribute("r","30");
+        c.setAttribute("fill","none");
+        c.setAttribute("stroke","#55c46b");
+        c.setAttribute("stroke-width","5");
+        c.setAttribute("opacity",".85");
+        lowerReadyRings.appendChild(c);
+      });
+    }
+
+    function setStateText(text){ stateLine.textContent = text; }
+    function setGestureText(text){ gestureLine.textContent = text || "—"; }
+    function showHint(text){
+      if(!settings.fingerHint){ hintLine.textContent = ""; return; }
+      hintLine.textContent = text || "";
+    }
+
+    function toSvgPoint(ev){
+      const rect = svg.getBoundingClientRect();
+      return {
+        x: (ev.clientX - rect.left) * 500 / rect.width,
+        y: (ev.clientY - rect.top) * 400 / rect.height
+      };
+    }
+
+    function hitTest(point){
+      const halfW = 36;      // 72 units
+      const halfH = 24;      // 48 units
+
+      if(Math.abs(point.x - 250) <= halfW){
+        const upperCenter = visual.upperY + 20;
+        if(Math.abs(point.y - upperCenter) <= halfH){
+          return {kind:"upper", candidates:[0]};
+        }
+
+        const candidates = [];
+        for(let i=0;i<4;i++){
+          const cy = visual.lowerY[i] + 20;
+          if(Math.abs(point.y - cy) <= halfH) candidates.push(i);
+        }
+        if(candidates.length) return {kind:"lower", candidates};
+      }
+      return null;
+    }
+
+    function chooseLowerCandidate(candidates, direction){
+      if(candidates.length === 1) return candidates[0];
+      const sorted = [...candidates].sort((a,b) => visual.lowerY[a] - visual.lowerY[b]);
+      return direction === "up" ? sorted[0] : sorted[sorted.length - 1];
+    }
+
+    function acceptedPointerCount(){
+      let n = 0;
+      activePointers.forEach(p => { if(!p.ignored) n++; });
+      return n;
+    }
+
+    function firstAcceptedPointer(){
+      for(const p of activePointers.values()) if(!p.ignored) return p;
+      return null;
+    }
+
+    function canAcceptSecond(hit, now){
+      const first = firstAcceptedPointer();
+      if(!first) return true;
+      if(acceptedPointerCount() >= 2) return false;
+      if(now - first.downAt > settings.dualMs) return false;
+      if(!hit) return false;
+      return hit.kind !== first.kind; // 一上珠 + 一下珠
+    }
+
+    function pointerDown(ev){
+      ev.preventDefault();
+      ensureAudio();
+
+      const p = toSvgPoint(ev);
+      const hit = hitTest(p);
+      if(!hit || rodAnimating){
+        activePointers.set(ev.pointerId, {ignored:true, downAt:performance.now()});
+        return;
+      }
+
+      const now = performance.now();
+      const count = acceptedPointerCount();
+      if(count >= 1 && !canAcceptSecond(hit, now)){
+        activePointers.set(ev.pointerId, {ignored:true, downAt:now});
+        showHint("不同步或非同桿夾珠時，第二指本次忽略");
+        return;
+      }
+
+      try{ svg.setPointerCapture(ev.pointerId); }catch(e){}
+
+      const pointer = {
+        id: ev.pointerId,
+        ignored:false,
+        kind:hit.kind,
+        candidates:hit.candidates,
+        targetIndex:null,
+        downAt:now,
+        startX:p.x,
+        startY:p.y,
+        currentX:p.x,
+        currentY:p.y,
+        direction:null,
+        phase:"tracking",
+        ready:false,
+        progress:0,
+        startUpper:state.upper,
+        startLower:state.lower,
+        movingIndices:[],
+        baseYs:null,
+        targetUpper:null,
+        targetLower:null,
+        travel:0,
+        dualCandidate:count === 1
+      };
+
+      activePointers.set(ev.pointerId, pointer);
+      setStateText(count === 1 ? "DUAL_TRACKING" : "TRACKING");
+      setGestureText(hit.kind === "upper" ? "上珠：等待方向" : `下珠：等待方向（候選 ${hit.candidates.map(i=>i+1).join("/") }）`);
+      showHint("");
+    }
+
+    function configureDrag(ptr, direction){
+      ptr.direction = direction;
+
+      if(ptr.kind === "upper"){
+        const valid = (direction === "down" && !ptr.startUpper) || (direction === "up" && ptr.startUpper);
+        if(!valid){
+          ptr.phase = "blocked";
+          setStateText("BLOCKED");
+          setGestureText(`上珠 ${direction === "down" ? "↓" : "↑"}：已在該方向到位`);
+          return false;
+        }
+        ptr.phase = "dragging";
+        ptr.targetUpper = direction === "down";
+        ptr.travel = 50;
+        ptr.baseYs = [ptr.startUpper ? 60 : 10];
+      }else{
+        const idx = chooseLowerCandidate(ptr.candidates, direction);
+        ptr.targetIndex = idx;
+        const N = idx + 1;
+
+        if(direction === "up"){
+          if(N <= ptr.startLower){
+            ptr.phase = "blocked";
+            setStateText("BLOCKED");
+            setGestureText(`下珠 ${N} ↑：已在靠梁珠群`);
+            return false;
+          }
+          ptr.targetLower = N;
+          ptr.movingIndices = [];
+          for(let i=ptr.startLower;i<N;i++) ptr.movingIndices.push(i);
+        }else{
+          if(N > ptr.startLower){
+            ptr.phase = "blocked";
+            setStateText("BLOCKED");
+            setGestureText(`下珠 ${N} ↓：已在沉底珠群`);
+            return false;
+          }
+          ptr.targetLower = N - 1;
+          ptr.movingIndices = [];
+          for(let i=N-1;i<ptr.startLower;i++) ptr.movingIndices.push(i);
+        }
+
+        ptr.phase = "dragging";
+        ptr.travel = lowerTravel();
+        ptr.baseYs = ptr.movingIndices.map(i => committedLowerY(i));
+      }
+
+      setStateText(acceptedPointerCount() === 2 ? "DUAL_DRAGGING" : "DRAGGING");
+      updateDualStatus();
+      return true;
+    }
+
+    function updateDualStatus(){
+      const arr = [...activePointers.values()].filter(p => !p.ignored && p.phase === "dragging");
+      if(arr.length < 2){
+        lastDualLabel = "";
+        return;
+      }
+      const upper = arr.find(p => p.kind === "upper");
+      const lower = arr.find(p => p.kind === "lower");
+      if(!upper || !lower) return;
+
+      const standard = upper.direction === "down" && lower.direction === "up";
+      lastDualLabel = standard ? "標準同桿夾珠" : "非標準雙指組合";
+      if(!standard) showHint("此雙指組合不是標準 6～9 夾珠指法");
+      else showHint("");
+    }
+
+    function applyDrag(ptr, currentY){
+      const delta = currentY - ptr.startY;
+      const raw = ptr.direction === "down" ? Math.max(0, delta) : Math.max(0, -delta);
+      let moved = Math.min(ptr.travel, raw * settings.follow);
+
+      let remaining = ptr.travel - moved;
+      if(remaining <= settings.magnet && remaining > 0){
+        const strength = (settings.magnet - remaining) / Math.max(1, settings.magnet);
+        moved = Math.min(ptr.travel, moved + remaining * 0.38 * strength);
+        remaining = ptr.travel - moved;
+      }
+
+      ptr.progress = moved / ptr.travel;
+      ptr.ready = remaining <= settings.arrival;
+      const sign = ptr.direction === "down" ? 1 : -1;
+
+      if(ptr.kind === "upper"){
+        visual.upperY = ptr.baseYs[0] + sign * moved;
+      }else{
+        ptr.movingIndices.forEach((idx, j) => {
+          visual.lowerY[idx] = ptr.baseYs[j] + sign * moved;
+        });
+      }
+
+      const pct = Math.round(ptr.progress * 100);
+      const target = ptr.kind === "upper" ? "上珠" : `下珠${ptr.targetIndex + 1}`;
+      setGestureText(`${target} ${ptr.direction === "up" ? "↑" : "↓"}｜${pct}%${ptr.ready ? "｜已到位區" : ""}${lastDualLabel ? "｜" + lastDualLabel : ""}`);
+      render();
+    }
+
+    function pointerMove(ev){
+      const ptr = activePointers.get(ev.pointerId);
+      if(!ptr || ptr.ignored) return;
+      ev.preventDefault();
+
+      const p = toSvgPoint(ev);
+      ptr.currentX = p.x;
+      ptr.currentY = p.y;
+
+      const dy = p.y - ptr.startY;
+
+      if(ptr.phase === "tracking"){
+        if(Math.abs(dy) < settings.activation) return;
+        const direction = dy < 0 ? "up" : "down";
+        if(!configureDrag(ptr, direction)) return;
+      }
+
+      if(ptr.phase === "dragging"){
+        applyDrag(ptr, p.y);
+        updateDualStatus();
+      }
+    }
+
+    function pointerEnd(ev){
+      const ptr = activePointers.get(ev.pointerId);
+      if(!ptr) return;
+      ev.preventDefault();
+
+      if(ptr.ignored){
+        activePointers.delete(ev.pointerId);
+        return;
+      }
+
+      if(ptr.phase === "dragging"){
+        if(ptr.ready){
+          finishCommit(ptr);
+        }else{
+          finishRebound(ptr);
+        }
+      }else{
+        activePointers.delete(ev.pointerId);
+        if(acceptedPointerCount() === 0){
+          setStateText("IDLE");
+          setGestureText("—");
+          showHint("");
+        }
+      }
+
+      try{ svg.releasePointerCapture(ev.pointerId); }catch(e){}
+    }
+
+    function pointerCancel(ev){
+      const ptr = activePointers.get(ev.pointerId);
+      if(!ptr) return;
+      if(ptr.ignored){
+        activePointers.delete(ev.pointerId);
+        return;
+      }
+      finishRebound(ptr);
+    }
+
+    function easeOutCubic(t){ return 1 - Math.pow(1 - t, 3); }
+
+    function animateValues(from, to, duration, onFrame, onDone){
+      const token = ++animationToken;
+      const start = performance.now();
+      rodAnimating = true;
+
+      function frame(now){
+        if(token !== animationToken) return;
+        const t = Math.min(1, (now - start) / Math.max(1, duration));
+        const e = easeOutCubic(t);
+        const vals = from.map((v,i) => v + (to[i] - v) * e);
+        onFrame(vals);
+        if(t < 1){
+          requestAnimationFrame(frame);
+        }else{
+          rodAnimating = false;
+          onDone && onDone();
+        }
+      }
+      requestAnimationFrame(frame);
+    }
+
+    function finishCommit(ptr){
+      const from = ptr.kind === "upper"
+        ? [visual.upperY]
+        : ptr.movingIndices.map(i => visual.lowerY[i]);
+
+      let to;
+      if(ptr.kind === "upper"){
+        to = [ptr.targetUpper ? 60 : 10];
+      }else{
+        const targetLower = ptr.targetLower;
+        to = ptr.movingIndices.map(i => i < targetLower ? engagedY(i) : parkedY(i));
+      }
+
+      activePointers.delete(ptr.id);
+      setStateText("SNAP");
+
+      animateValues(from, to, settings.snapMs, vals => {
+        if(ptr.kind === "upper"){
+          visual.upperY = vals[0];
+        }else{
+          ptr.movingIndices.forEach((idx,j) => visual.lowerY[idx] = vals[j]);
+        }
+        render();
+      }, () => {
+        if(ptr.kind === "upper") state.upper = ptr.targetUpper;
+        else state.lower = ptr.targetLower;
+
+        resetVisualToCommitted();
+        playImpact();
+        vibrateSuccess();
+
+        setStateText("COMMIT");
+        setGestureText("到位成立");
+        setTimeout(() => {
+          if(acceptedPointerCount() === 0 && !rodAnimating){
+            setStateText("IDLE");
+            setGestureText("—");
+            showHint("");
+          }
+        }, 180);
+      });
+    }
+
+    function finishRebound(ptr){
+      const from = ptr.kind === "upper"
+        ? [visual.upperY]
+        : (ptr.movingIndices || []).map(i => visual.lowerY[i]);
+
+      let to;
+      if(ptr.kind === "upper"){
+        to = [committedUpperY()];
+      }else{
+        to = (ptr.movingIndices || []).map(i => committedLowerY(i));
+      }
+
+      activePointers.delete(ptr.id);
+
+      if(!from.length){
+        resetVisualToCommitted();
+        return;
+      }
+
+      setStateText("REBOUND");
+      animateValues(from, to, settings.reboundMs, vals => {
+        if(ptr.kind === "upper"){
+          visual.upperY = vals[0];
+        }else{
+          ptr.movingIndices.forEach((idx,j) => visual.lowerY[idx] = vals[j]);
+        }
+        render();
+      }, () => {
+        resetVisualToCommitted();
+        if(acceptedPointerCount() === 0){
+          setStateText("IDLE");
+          setGestureText("—");
+          showHint("");
+        }
+      });
+    }
+
+    function ensureAudio(){
+      if(audioCtx) return;
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if(!Ctx) return;
+      try{
+        audioCtx = new Ctx();
+        if(audioCtx.state === "suspended") audioCtx.resume();
+      }catch(e){}
+    }
+
+    function playImpact(){
+      if(!audioCtx || settings.volume <= 0) return;
+      try{
+        if(audioCtx.state === "suspended") audioCtx.resume();
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(720, now);
+        osc.frequency.exponentialRampToValueAtTime(170, now + 0.045);
+        gain.gain.setValueAtTime(Math.max(.001, settings.volume * .42), now);
+        gain.gain.exponentialRampToValueAtTime(.001, now + 0.055);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.06);
+      }catch(e){}
+    }
+
+    function vibrateSuccess(){
+      if(settings.vibration === "off" || !navigator.vibrate) return;
+      const ms = settings.vibration === "medium" ? 22 : 10;
+      try{ navigator.vibrate(ms); }catch(e){}
+    }
+
+    function cancelAllGestures(){
+      animationToken++;
+      rodAnimating = false;
+      activePointers.clear();
+      setStateText("IDLE");
+      setGestureText("—");
+      showHint("");
+      resetVisualToCommitted();
+    }
+
+    svg.addEventListener("pointerdown", pointerDown, {passive:false});
+    svg.addEventListener("pointermove", pointerMove, {passive:false});
+    svg.addEventListener("pointerup", pointerEnd, {passive:false});
+    svg.addEventListener("pointercancel", pointerCancel, {passive:false});
+
+    // Settings
+    const fields = {
+      activation: ["activation","activationOut", v => `${v}`],
+      arrival: ["arrival","arrivalOut", v => `${v}`],
+      magnet: ["magnet","magnetOut", v => `${v}`],
+      follow: ["follow","followOut", v => `${v}%`],
+      snapMs: ["snap","snapOut", v => `${v}ms`],
+      reboundMs: ["rebound","reboundOut", v => `${v}ms`],
+      dualMs: ["dual","dualOut", v => `${v}ms`],
+      gap: ["gap","gapOut", v => `${v}`],
+      volume: ["volume","volumeOut", v => `${v}%`]
+    };
+
+    function syncControls(){
+      Object.entries(fields).forEach(([key,[id,outId,fmt]]) => {
+        const el = document.getElementById(id);
+        const out = document.getElementById(outId);
+        let uiValue = settings[key];
+        if(key === "follow" || key === "volume") uiValue = Math.round(uiValue * 100);
+        el.value = uiValue;
+        out.textContent = fmt(uiValue);
+      });
+      document.getElementById("vibration").value = settings.vibration;
+      document.getElementById("fingerHint").checked = settings.fingerHint;
+    }
+
+    Object.entries(fields).forEach(([key,[id,outId,fmt]]) => {
+      const el = document.getElementById(id);
+      el.addEventListener("input", () => {
+        cancelAllGestures();
+        const raw = Number(el.value);
+        if(key === "follow" || key === "volume") settings[key] = raw / 100;
+        else settings[key] = raw;
+        document.getElementById(outId).textContent = fmt(raw);
+        if(key === "gap") resetVisualToCommitted();
+        document.querySelectorAll(".preset").forEach(b => b.classList.remove("active"));
+      });
+    });
+
+    document.getElementById("vibration").addEventListener("change", e => settings.vibration = e.target.value);
+    document.getElementById("fingerHint").addEventListener("change", e => {
+      settings.fingerHint = e.target.checked;
+      if(!settings.fingerHint) showHint("");
+    });
+
+    function applyPreset(name){
+      cancelAllGestures();
+      Object.assign(settings, presets[name]);
+      syncControls();
+      document.querySelectorAll(".preset").forEach(b => b.classList.toggle("active", b.dataset.preset === name));
+      resetVisualToCommitted();
+    }
+
+    document.querySelectorAll(".preset").forEach(btn => {
+      btn.addEventListener("click", () => applyPreset(btn.dataset.preset));
+    });
+
+    document.getElementById("restoreStandard").addEventListener("click", () => applyPreset("standard"));
+
+    document.getElementById("resetZero").addEventListener("click", () => {
+      cancelAllGestures();
+      state.upper = false;
+      state.lower = 0;
+      resetVisualToCommitted();
+      playImpact();
+    });
+
+    const openSettings = document.getElementById("openSettings");
+    const closeSettings = document.getElementById("closeSettings");
+    const sheet = document.getElementById("settingsSheet");
+    const backdrop = document.getElementById("backdrop");
+
+    function openSheet(){
+      sheet.classList.add("open");
+      backdrop.classList.add("open");
+    }
+    function closeSheet(){
+      sheet.classList.remove("open");
+      backdrop.classList.remove("open");
+    }
+
+    openSettings.addEventListener("click", openSheet);
+    closeSettings.addEventListener("click", closeSheet);
+    backdrop.addEventListener("click", closeSheet);
+
+    syncControls();
+    resetVisualToCommitted();
+  })();
+  </script>
+</body>
+</html>
